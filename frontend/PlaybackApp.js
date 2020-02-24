@@ -1,54 +1,42 @@
 import React from 'react';
 
-const url = 'ws://127.0.0.1:8000/ws/play/';
+const play = url => {
+  const socket = new WebSocket(url);
+  socket.binaryType = 'arraybuffer';
 
-var context = new AudioContext();
-var sampleRate = 44000;
-var startAt = 0;
+  const context = new AudioContext();
+  const sampleRate = 44000;
 
-export const App = (props) => {
-  const [mr, setMr] = React.useState();
-
-  const play = () => {
-    const socket = new WebSocket(url);
-    socket.binaryType = 'arraybuffer';
-    let i = 0;
-    socket.onmessage = function(event) {
-      const j = i++;
-      console.log(event.data, j);
-      context.decodeAudioData(event.data).then(buf => {
-        console.log(buf, j);
-        const source = context.createBufferSource();
-        source.buffer = buf;
-        source.connect(context.destination);
-        source.start(0);
-      });
-      // var floats = new Float32Array(event.data);
-      // console.log(floats.length);
-      // if (!floats.length) {
-      //   return
-      // }
-      // var source = context.createBufferSource();
-      // var buffer = context.createBuffer(1, floats.length, sampleRate);
-      // buffer.getChannelData(0).set(floats);
-      // source.buffer = buffer;
-      // source.connect(context.destination);
-      // startAt = Math.max(context.currentTime, startAt);
-      // source.start(startAt);
-      // startAt += buffer.duration;
-    };
-
-    socket.onopen = () => {
-      console.log('OPEN');
-    };
-
-    socket.onclose = () => console.log('CLOSE');
-    return socket;
+  let startAt = 0;
+  let i = 0;
+  socket.onmessage = function(event) {
+    const j = i++;
+    var floats = new Float32Array(event.data);
+    console.log(j, floats.length);
+    const source = context.createBufferSource();
+    source.connect(context.destination);
+    const buffer = context.createBuffer(1, floats.length, sampleRate);
+    buffer.getChannelData(0).set(floats);
+    source.buffer = buffer;
+    startAt = Math.max(context.currentTime, startAt);
+    source.start(startAt);
+    startAt += buffer.duration;
   };
+
+  socket.onopen = () => {
+    console.log('OPEN');
+  };
+
+  socket.onclose = () => console.log('CLOSE');
+
+  return socket;
+};
+
+export const PlaybackApp = ({url}) => {
 
   return <div>
     <p>
-      <button onClick={play}>
+      <button onClick={() => play(url)}>
         Play
       </button>
     </p>

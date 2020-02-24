@@ -1,48 +1,54 @@
 import React from 'react';
 
-const url = 'ws://127.0.0.1:8000/ws/record/';
-
-const record = (length, ms, ondata, onstop) => {
+const record = (length, ms, ondata) => {
   return navigator.mediaDevices.getUserMedia({audio: true}).then(stream => {
-    var options = {
-      // mimeType: 'audio/webm',
-      mimeType: 'audio/wav',
+    const ctx = new AudioContext();
+    const node = ctx.createScriptProcessor(8192 * 2, 1, 1);
+    node.addEventListener('audioprocess', (e) => {
+      const raw = e.inputBuffer.getChannelData(0);
+      ondata(raw.buffer);
+    });
+    node.connect(ctx.destination);
+
+    const mic = ctx.createMediaStreamSource(stream);
+    mic.connect(node);
+
+    return () => {
+      stream.getTracks().forEach(function(track) {
+        track.stop();
+      });
+      node.disconnect();
+      mic.disconnect();
+      ctx.close();
     };
-    const mediaRecorder = new MediaRecorder(stream, options);
-    mediaRecorder.ondataavailable = ondata;
-    mediaRecorder.onstop = onstop;
-    console.log('starting');
-    mediaRecorder.start(ms);
-    return mediaRecorder;
-  }, (e) => console.log(e));
+  });
 };
 
-export const App = (props) => {
+export const RecordApp = ({url}) => {
   const [recording, setRecording] = React.useState(false);
-  const [mr, setMr] = React.useState();
+  const [socket, setSocket] = React.useState();
+  const [stop, setStop] = React.useState();
 
   const createSocket = () => {
     const socket = new WebSocket(url);
     socket.onopen = () => {
       console.log('OPEN');
-      record(5000, 100, (event) => {
-        console.log(event.data);
-        socket.send(event.data);
-      }, () => {
-        console.log('STOP MR');
-        socket.close();
-      }).then(setMr);
+      record(5000, 100, buf => {
+        socket.send(buf);
+      }).then(x => {
+        setStop(() => x);
+      }).catch(console.error);
     };
     socket.onclose = () => console.log('CLOSE');
-    // x.onmessage = handleMessage;
     return socket;
   };
 
   const recordOrStop = () => {
     if (recording) {
-      mr.stop();
+      stop();
+      socket.close();
     } else {
-      createSocket();
+      setSocket(createSocket());
     }
     setRecording(!recording);
   };

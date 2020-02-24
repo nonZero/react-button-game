@@ -43,7 +43,7 @@ class RecordAudioConsumer(WebsocketConsumer):
 
     def disconnect(self, close_code):
         logger.warning("DISCONNECT")
-        with open("demo.webm", "wb") as f:
+        with open("demo.pcm", "wb") as f:
             for b in self.buf:
                 f.write(b)
         del self.buf
@@ -53,12 +53,11 @@ class RecordAudioConsumer(WebsocketConsumer):
 class PlayAudioConsumer(WebsocketConsumer):
     def connect(self):
         self.accept()
-        with open("music.webm", "rb") as f:
+        with open("demo.pcm", "rb") as f:
             self.buf = f.read()
-        size = 6400
+        size = 64000
         for i in range(0, len(self.buf), size):
             self.send(bytes_data=self.buf[i:i + size])
-            break
 
     def disconnect(self, close_code):
         logger.warning("DISCONNECT")
