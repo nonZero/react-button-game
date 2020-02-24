@@ -8,5 +8,7 @@ application = ProtocolTypeRouter({
     'websocket':
         URLRouter([
             path('ws/game1/', consumers.GameConsumer),
+            path('ws/record/', consumers.RecordAudioConsumer),
+            path('ws/play/', consumers.PlayAudioConsumer),
         ])
 })
